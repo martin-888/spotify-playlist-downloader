@@ -1,1 +1,1 @@
-use typescript, npm and node v18
+use typescript, npm and node v18 (so node-fetch is not needed)

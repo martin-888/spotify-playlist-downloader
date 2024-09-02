@@ -1,8 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as cheerio from 'cheerio';
 
-const LASTFM_API_KEY = '88654d30689c49f055b8174e1ea59b0d';
+const playlistId = 'xxx';
+const ACCESS_TOKEN = 'xxx';
+
+const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
 
 interface Track {
   id: string;
@@ -11,6 +13,7 @@ interface Track {
 
 interface SpotifyDownResponse {
   success: boolean;
+  link: string;
   metadata: {
     cache: boolean;
     success: boolean;
@@ -22,7 +25,17 @@ interface SpotifyDownResponse {
     isrc: string;
     releaseDate: string;
   };
-  link: string;
+}
+interface SpotifyPlaylistTrack {
+  track: {
+    id: string;
+    name: string;
+    artists: { name: string }[];
+  };
+}
+
+interface SpotifyPlaylistResponse {
+  items: SpotifyPlaylistTrack[];
 }
 
 function isSpotifyDownResponse(obj: any): obj is SpotifyDownResponse {
@@ -35,44 +48,6 @@ function isSpotifyDownResponse(obj: any): obj is SpotifyDownResponse {
     obj.metadata !== null
     // Add more checks for metadata properties if needed
   );
-}
-
-async function extractAndDownloadTracks(filePath: string): Promise<void> {
-  try {
-    // Read the HTML file
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const $ = cheerio.load(html);
-    
-    const tracks: Track[] = [];
-    
-    $('a[data-testid="internal-track-link"]').each((_, element) => {
-      const href = $(element).attr('href');
-      const name = $(element).text().trim();
-      if (href && name) {
-        const id = href.replace('/track/', '');
-        tracks.push({ id, name });
-      }
-    });
-    
-    console.log(`Found ${tracks.length} tracks`);
-
-    // Only process the first 2 tracks
-    // const tracksToDownload = tracks.slice(0, 1);
-    const tracksToDownload = tracks;
-
-    for (const track of tracksToDownload) {
-      await downloadTrack(track);
-      // Add a 1-second delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-  } catch (error) {
-    console.error('Error reading or parsing the file:', error);
-    if (error instanceof Error) {
-      console.error('Full error message:', error.message);
-      console.error('Stack trace:', error.stack);
-    }
-  }
 }
 
 async function downloadTrack(track: Track): Promise<void> {
@@ -156,6 +131,74 @@ async function downloadTrack(track: Track): Promise<void> {
   }
 }
 
-// Usage example
-const filePath = path.join(__dirname, 'website.html');
-extractAndDownloadTracks(filePath);
+async function getPlaylistTracks(playlistId: string): Promise<Track[]> {
+    const url = `${SPOTIFY_API_URL}/playlists/${playlistId}/tracks`;
+    const limit = 100; // Maximum limit per request
+    let offset = 0;
+    let allTracks: Track[] = [];
+  
+    try {
+      while (true) {
+        const response = await fetch(`${url}?limit=${limit}&offset=${offset}`, {
+          headers: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
+  
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.error('Unauthorized: Check if the access token is valid and has the required scopes.');
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const data = await response.json() as SpotifyPlaylistResponse;
+        const tracks = data.items.map((item: SpotifyPlaylistTrack) => ({
+          id: item.track.id,
+          name: item.track.name
+        }));
+        allTracks = allTracks.concat(tracks);
+  
+        console.log(`Fetched ${data.items.length} tracks`);
+        
+        // Check if we have retrieved all tracks
+        if (data.items.length < limit) {
+          break;
+        }
+  
+        // Increment the offset for the next batch
+        offset += limit;
+      }
+  
+      console.log('All Tracks:', allTracks.length);
+      return allTracks;
+  
+    } catch (error) {
+      console.error('Error fetching playlist tracks:', error);
+      if (error instanceof Error) {
+        console.error('Full error message:', error.message);
+        console.error('Stack trace:', error.stack);
+      }
+      return [];
+    }
+  }
+
+async function downloadPlaylistTracks(playlistId: string): Promise<void> {
+  try {
+    const tracks = await getPlaylistTracks(playlistId);
+    for (const track of tracks) {
+      await downloadTrack(track);
+      // Add a 1-second delay
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } catch (error) {
+    console.error('Error downloading playlist tracks:', error);
+    if (error instanceof Error) {
+      console.error('Full error message:', error.message);
+      console.error('Stack trace:', error.stack);
+    }
+  }
+}
+
+downloadPlaylistTracks(playlistId);
