@@ -24,3 +24,25 @@ To get your Spotify Client ID:
 8. Copy the `Client ID` and paste it into your `.env` file.
 
 Make sure to replace the placeholder values with your actual Spotify client ID and desired playlist ID or URL.
+
+## How to Run
+
+To run the Spotify Playlist Downloader, follow these steps:
+
+1. First, start the authentication server:
+
+   ```
+   ts-node download-spotify-playlist.ts
+   ```
+
+2. Open `http://localhost:8888` in your web browser.
+
+3. Confirm the Spotify app permissions when prompted. This will generate an access token and save it to `access_token.txt`.
+
+4. After the access token is saved, run the downloader:
+
+   ```
+   ts-node download-spotify-playlist.ts
+   ```
+
+   This will start downloading the tracks from your specified playlist in .env file.
