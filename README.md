@@ -16,7 +16,7 @@ To get your Spotify Client ID:
 
 1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/).
 2. Log in with your Spotify account.
-3. Click on "Create an App" or "Create New App".
+3. Click on "Create App".
 4. Fill in the app name and description, then click "Create".
 5. In your new app's dashboard, you'll find the `Client ID`.
 6. In the app settings, add `http://localhost:8888/callback` as a Redirect URI.
