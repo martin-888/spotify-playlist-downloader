@@ -29,17 +29,23 @@ Make sure to replace the placeholder values with your actual Spotify client ID a
 
 To run the Spotify Playlist Downloader, follow these steps:
 
-1. First, start the authentication server:
+1. Install the required dependencies:
+
+   ```
+   npm install
+   ```
+
+2. Start the authentication server:
 
    ```
    ts-node get-access-token.ts
    ```
 
-2. Open `http://localhost:8888` in your web browser.
+3. Open `http://localhost:8888` in your web browser.
 
-3. Confirm the Spotify app permissions when prompted. This will generate an access token and save it to `access_token.txt`.
+4. Confirm the Spotify app permissions when prompted. This will generate an access token and save it to `access_token.txt`.
 
-4. After the access token is saved, run the downloader:
+5. After the access token is saved, run the downloader:
 
    ```
    ts-node download-spotify-playlist.ts
