@@ -38,7 +38,7 @@ To run the Spotify Playlist Downloader, follow these steps:
 2. Start the authentication server:
 
    ```
-   ts-node get-access-token.ts
+   npm run get-access-token
    ```
 
 3. Open `http://localhost:8888` in your web browser.
@@ -48,7 +48,7 @@ To run the Spotify Playlist Downloader, follow these steps:
 5. After the access token is saved, run the downloader:
 
    ```
-   ts-node download-spotify-playlist.ts
+   npm start
    ```
 
-   This will start downloading the tracks from your specified playlist in .env file.
+   This will start downloading the tracks from your specified playlist in the .env file.
