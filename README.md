@@ -32,7 +32,7 @@ To run the Spotify Playlist Downloader, follow these steps:
 1. First, start the authentication server:
 
    ```
-   ts-node download-spotify-playlist.ts
+   ts-node get-access-token.ts
    ```
 
 2. Open `http://localhost:8888` in your web browser.
