@@ -1,8 +1,27 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import dotenv from 'dotenv';
 
-const playlistId = 'xxx';
-const ACCESS_TOKEN = 'xxx';
+dotenv.config();
+
+const playlistIdOrUrl = process.env.PLAYLIST_ID_OR_URL;
+const downloadFolder = process.env.DOWNLOAD_FOLDER || 'downloads';
+
+if (!playlistIdOrUrl) {
+  console.error('PLAYLIST_ID_OR_URL is not set in the environment variables');
+  process.exit(1);
+}
+
+console.log(`Songs will be downloaded to: ${path.resolve(__dirname, downloadFolder)}`);
+
+let accessToken: string;
+
+try {
+  accessToken = fs.readFileSync('access_token.txt', 'utf8').trim();
+} catch (error) {
+  console.error('Error reading access_token.txt:', error);
+  process.exit(1);
+}
 
 const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
 
@@ -84,7 +103,6 @@ async function downloadTrack(track: Track): Promise<void> {
       throw new Error('Invalid response structure from API');
     }
     const data: SpotifyDownResponse = rawData;
-    console.log(`Track ${track.name} download info:`, data);
 
     if (data.success && data.link) {
       const audioResponse = await fetch(data.link);
@@ -108,26 +126,20 @@ async function downloadTrack(track: Track): Promise<void> {
       // Replace multiple consecutive hyphens with a single hyphen
       fileName = fileName.replace(/-+/g, '-');
 
-      // Create 'music' folder if it doesn't exist
-      const musicFolder = path.join(__dirname, 'music');
-      if (!fs.existsSync(musicFolder)) {
-        fs.mkdirSync(musicFolder);
+      const fullDownloadPath = path.join(__dirname, downloadFolder);
+      if (!fs.existsSync(fullDownloadPath)) {
+        fs.mkdirSync(fullDownloadPath);
       }
 
-      const filePath = path.join(musicFolder, fileName);
+      const filePath = path.join(fullDownloadPath, fileName);
       fs.writeFileSync(filePath, Buffer.from(buffer));
-      console.log(`Downloaded "${data.metadata.artists} - ${data.metadata.title}" to ${filePath}`);
+      console.log(`Downloaded "${data.metadata.artists} - ${data.metadata.title}"`);
 
     } else {
-      console.error(`Failed to get download link for "${track.name}"`);
+      console.error(`*** Download failed for "${track.name}"`);
     }
-
   } catch (error) {
-    console.error(`Error downloading track ${track.name}:`, error);
-    if (error instanceof Error) {
-      console.error('Full error message:', error.message);
-      console.error('Stack trace:', error.stack);
-    }
+    console.error(`*** Download failed for "${track.name}"`);
   }
 }
 
@@ -141,7 +153,7 @@ async function getPlaylistTracks(playlistId: string): Promise<Track[]> {
       while (true) {
         const response = await fetch(`${url}?limit=${limit}&offset=${offset}`, {
           headers: {
-            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
           }
         });
@@ -159,8 +171,6 @@ async function getPlaylistTracks(playlistId: string): Promise<Track[]> {
           name: item.track.name
         }));
         allTracks = allTracks.concat(tracks);
-  
-        console.log(`Fetched ${data.items.length} tracks`);
         
         // Check if we have retrieved all tracks
         if (data.items.length < limit) {
@@ -171,9 +181,8 @@ async function getPlaylistTracks(playlistId: string): Promise<Track[]> {
         offset += limit;
       }
   
-      console.log('All Tracks:', allTracks.length);
+      console.log('Number of tracks in playlist:', allTracks.length);
       return allTracks;
-  
     } catch (error) {
       console.error('Error fetching playlist tracks:', error);
       if (error instanceof Error) {
@@ -184,12 +193,21 @@ async function getPlaylistTracks(playlistId: string): Promise<Track[]> {
     }
   }
 
-async function downloadPlaylistTracks(playlistId: string): Promise<void> {
+function extractPlaylistId(playlistIdOrUrl: string): string {
+  const urlPattern = /^https:\/\/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/;
+  const match = playlistIdOrUrl.match(urlPattern);
+  return match ? match[1] : playlistIdOrUrl;
+}
+
+async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
   try {
+    const playlistId = extractPlaylistId(playlistIdOrUrl);
     const tracks = await getPlaylistTracks(playlistId);
-    for (const track of tracks) {
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i];
+      console.log(`Downloading track ${i + 1} of ${tracks.length}: "${track.name}"`);
       await downloadTrack(track);
-      // Add a 1-second delay
+      // Add a small delay to avoid being blocked
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   } catch (error) {
@@ -201,4 +219,4 @@ async function downloadPlaylistTracks(playlistId: string): Promise<void> {
   }
 }
 
-downloadPlaylistTracks(playlistId);
+downloadPlaylistTracks(playlistIdOrUrl);
