@@ -1,5 +1,4 @@
 # Node.js dependencies
 node_modules/
 
-music/*
-music1/*
+access_token.txt
