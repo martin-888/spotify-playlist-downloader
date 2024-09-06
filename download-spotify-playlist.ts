@@ -193,7 +193,7 @@ async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
         successfulDownloads++;
       } else {
         console.error(`❌`);
-        failedDownloads[track.id] = track.name;
+        failedDownloads[track.id] = `${track.artists[0].name} - ${track.name}`;
         fs.writeFileSync('failed.json', JSON.stringify(failedDownloads, null, 2));
       }
 
