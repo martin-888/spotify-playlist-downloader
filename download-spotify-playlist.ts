@@ -101,8 +101,7 @@ async function downloadTrack(track: Track): Promise<boolean> {
       };
 
       const artistName = track.artists[0]?.name ?? 'Unknown Artist';
-      const sanitizedArtists = sanitizeString(artistName);
-      const fileName = `${sanitizedArtists} - ${track.name}.mp3`;
+      const fileName = `${sanitizeString(artistName)} - ${sanitizeString(track.name)}.mp3`;
 
       const fullDownloadPath = path.join(__dirname, downloadFolder);
       if (!fs.existsSync(fullDownloadPath)) {
@@ -111,14 +110,11 @@ async function downloadTrack(track: Track): Promise<boolean> {
 
       const filePath = path.join(fullDownloadPath, fileName);
       fs.writeFileSync(filePath, Buffer.from(buffer));
-      console.log(`✅`);
       return true;
     } else {
-      console.error(`❌`);
       return false;
     }
   } catch (error) {
-    console.error(`❌`);
     return false;
   }
 }
@@ -193,8 +189,10 @@ async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
       const success = await downloadTrack(track);
       
       if (success) {
+        console.log(`✅`);
         successfulDownloads++;
       } else {
+        console.error(`❌`);
         failedDownloads[track.id] = track.name;
         fs.writeFileSync('failed.json', JSON.stringify(failedDownloads, null, 2));
       }
