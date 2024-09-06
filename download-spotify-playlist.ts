@@ -28,33 +28,16 @@ const SPOTIFY_API_URL = 'https://api.spotify.com/v1';
 interface Track {
   id: string;
   name: string;
+  artists: { name: string }[];
 }
 
 interface SpotifyDownResponse {
   success: boolean;
   link: string;
-  metadata: {
-    cache: boolean;
-    success: boolean;
-    id: string;
-    artists: string;
-    title: string;
-    album: string;
-    cover: string;
-    isrc: string;
-    releaseDate: string;
-  };
-}
-interface SpotifyPlaylistTrack {
-  track: {
-    id: string;
-    name: string;
-    artists: { name: string }[];
-  };
 }
 
 interface SpotifyPlaylistResponse {
-  items: SpotifyPlaylistTrack[];
+  items: { track: Track }[];
 }
 
 function isSpotifyDownResponse(obj: any): obj is SpotifyDownResponse {
@@ -62,10 +45,7 @@ function isSpotifyDownResponse(obj: any): obj is SpotifyDownResponse {
     typeof obj === 'object' &&
     obj !== null &&
     typeof obj.success === 'boolean' &&
-    typeof obj.link === 'string' &&
-    typeof obj.metadata === 'object' &&
-    obj.metadata !== null
-    // Add more checks for metadata properties if needed
+    typeof obj.link === 'string'
   );
 }
 
@@ -116,15 +96,13 @@ async function downloadTrack(track: Track): Promise<boolean> {
         return str
           .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
           .replace(/\s+/g, ' ')     // Replace multiple spaces with a single space
+          .replace(/-+/g, '-')      // Replace multiple hyphens with a single hyphen
           .trim();                  // Remove leading and trailing spaces
       };
 
-      const sanitizedTitle = sanitizeString(data.metadata.title);
-      const sanitizedArtists = sanitizeString(data.metadata.artists);
-      let fileName = `${sanitizedArtists} - ${sanitizedTitle}.mp3`;
-      
-      // Replace multiple consecutive hyphens with a single hyphen
-      fileName = fileName.replace(/-+/g, '-');
+      const artistName = track.artists[0]?.name ?? 'Unknown Artist';
+      const sanitizedArtists = sanitizeString(artistName);
+      const fileName = `${sanitizedArtists} - ${track.name}.mp3`;
 
       const fullDownloadPath = path.join(__dirname, downloadFolder);
       if (!fs.existsSync(fullDownloadPath)) {
@@ -133,14 +111,14 @@ async function downloadTrack(track: Track): Promise<boolean> {
 
       const filePath = path.join(fullDownloadPath, fileName);
       fs.writeFileSync(filePath, Buffer.from(buffer));
-      console.log(`✅ Downloaded "${data.metadata.artists} - ${data.metadata.title}"`);
+      console.log(`✅`);
       return true;
     } else {
-      console.error(`❌ Download failed for "${track.name}"`);
+      console.error(`❌`);
       return false;
     }
   } catch (error) {
-    console.error(`❌ Download failed for "${track.name}"`);
+    console.error(`❌`);
     return false;
   }
 }
@@ -168,9 +146,10 @@ async function getPlaylistTracks(playlistId: string): Promise<Track[]> {
         }
   
         const data = await response.json() as SpotifyPlaylistResponse;
-        const tracks = data.items.map((item: SpotifyPlaylistTrack) => ({
+        const tracks = data.items.map((item) => ({
           id: item.track.id,
-          name: item.track.name
+          name: item.track.name,
+          artists: item.track.artists
         }));
         allTracks = allTracks.concat(tracks);
         
@@ -182,8 +161,6 @@ async function getPlaylistTracks(playlistId: string): Promise<Track[]> {
         // Increment the offset for the next batch
         offset += limit;
       }
-  
-      console.log('Number of tracks in playlist:', allTracks.length);
       return allTracks;
     } catch (error) {
       console.error('Error fetching playlist tracks:', error);
@@ -206,13 +183,18 @@ async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
     const playlistId = extractPlaylistId(playlistIdOrUrl);
     const tracks = await getPlaylistTracks(playlistId);
     const failedDownloads: Record<string, string> = {};
+    let successfulDownloads = 0;
+  
+    console.log('💿 Number of tracks in playlist:', tracks.length, '\n');
 
     for (let i = 0; i < tracks.length; i++) {
       const track = tracks[i];
-      console.log(`Downloading track ${i + 1} of ${tracks.length}: "${track.name}"`);
+      console.log(`Downloading track ${i + 1} of ${tracks.length}: "${track.artists[0].name} - ${track.name}"`);
       const success = await downloadTrack(track);
       
-      if (!success) {
+      if (success) {
+        successfulDownloads++;
+      } else {
         failedDownloads[track.id] = track.name;
         fs.writeFileSync('failed.json', JSON.stringify(failedDownloads, null, 2));
       }
@@ -220,6 +202,10 @@ async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
       // Add a small delay to avoid being blocked
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    console.log(`\nDownload summary:`);
+    console.log(`✅ Successfully downloaded: ${successfulDownloads} songs`);
+    console.log(`❌ Failed to download: ${Object.keys(failedDownloads).length} songs`);
   } catch (error) {
     console.error('Error downloading playlist tracks:', error);
     if (error instanceof Error) {
