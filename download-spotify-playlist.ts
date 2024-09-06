@@ -69,7 +69,7 @@ function isSpotifyDownResponse(obj: any): obj is SpotifyDownResponse {
   );
 }
 
-async function downloadTrack(track: Track): Promise<void> {
+async function downloadTrack(track: Track): Promise<boolean> {
   const url = `https://api.spotifydown.com/download/${track.id}`;
   
   try {
@@ -133,13 +133,15 @@ async function downloadTrack(track: Track): Promise<void> {
 
       const filePath = path.join(fullDownloadPath, fileName);
       fs.writeFileSync(filePath, Buffer.from(buffer));
-      console.log(`Downloaded "${data.metadata.artists} - ${data.metadata.title}"`);
-
+      console.log(`✅ Downloaded "${data.metadata.artists} - ${data.metadata.title}"`);
+      return true;
     } else {
-      console.error(`*** Download failed for "${track.name}"`);
+      console.error(`❌ Download failed for "${track.name}"`);
+      return false;
     }
   } catch (error) {
-    console.error(`*** Download failed for "${track.name}"`);
+    console.error(`❌ Download failed for "${track.name}"`);
+    return false;
   }
 }
 
@@ -203,10 +205,18 @@ async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
   try {
     const playlistId = extractPlaylistId(playlistIdOrUrl);
     const tracks = await getPlaylistTracks(playlistId);
+    const failedDownloads: Record<string, string> = {};
+
     for (let i = 0; i < tracks.length; i++) {
       const track = tracks[i];
       console.log(`Downloading track ${i + 1} of ${tracks.length}: "${track.name}"`);
-      await downloadTrack(track);
+      const success = await downloadTrack(track);
+      
+      if (!success) {
+        failedDownloads[track.id] = track.name;
+        fs.writeFileSync('failed.json', JSON.stringify(failedDownloads, null, 2));
+      }
+
       // Add a small delay to avoid being blocked
       await new Promise(resolve => setTimeout(resolve, 100));
     }

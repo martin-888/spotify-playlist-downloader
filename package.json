@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "ts-node download-spotify-playlist.ts",
-    "get-access-token": "ts-node get-access-token.ts"
+    "auth": "ts-node get-access-token.ts"
   },
   "author": "",
   "license": "ISC",
