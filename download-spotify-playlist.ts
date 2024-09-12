@@ -181,7 +181,7 @@ async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
     const failedDownloads: Record<string, string> = {};
     let successfulDownloads = 0;
   
-    console.log('💿 Number of tracks in playlist:', tracks.length, '\n');
+    console.log('💿 Tracks in playlist:', tracks.length, '\n');
 
     for (let i = 0; i < tracks.length; i++) {
       const track = tracks[i];
