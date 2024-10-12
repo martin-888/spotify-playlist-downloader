@@ -94,7 +94,6 @@ async function downloadTrack(track: Track): Promise<boolean> {
 
       const sanitizeString = (str: string) => {
         return str
-          .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
           .replace(/\s+/g, ' ')     // Replace multiple spaces with a single space
           .replace(/-+/g, '-')      // Replace multiple hyphens with a single hyphen
           .trim();                  // Remove leading and trailing spaces
@@ -183,22 +182,28 @@ async function downloadPlaylistTracks(playlistIdOrUrl: string): Promise<void> {
   
     console.log('💿 Tracks in playlist:', tracks.length, '\n');
 
-    for (let i = 0; i < tracks.length; i++) {
-      const track = tracks[i];
-      console.log(`Downloading track ${i + 1} of ${tracks.length}: "${track.artists[0].name} - ${track.name}"`);
-      const success = await downloadTrack(track);
-      
-      if (success) {
-        console.log(`✅`);
-        successfulDownloads++;
-      } else {
-        console.error(`❌`);
-        failedDownloads[track.id] = `${track.artists[0].name} - ${track.name}`;
-        fs.writeFileSync('failed.json', JSON.stringify(failedDownloads, null, 2));
-      }
+    // Process tracks in batches of 5
+    for (let i = 0; i < tracks.length; i += 5) {
+      const batch = tracks.slice(i, i + 5);
+      const downloadPromises = batch.map(async (track, index) => {
+        console.log(`Downloading track ${i + index + 1} of ${tracks.length}: "${track.artists[0].name} - ${track.name}"`);
+        const success = await downloadTrack(track);
+        
+        if (success) {
+          console.log(`✅ ${track.artists[0].name} - ${track.name}`);
+          successfulDownloads++;
+        } else {
+          console.error(`❌ ${track.artists[0].name} - ${track.name}`);
+          failedDownloads[track.id] = `${track.artists[0].name} - ${track.name}`;
+          fs.writeFileSync('failed.json', JSON.stringify(failedDownloads, null, 2));
+        }
+      });
 
-      // Add a small delay to avoid being blocked
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for all downloads in the current batch to complete
+      await Promise.all(downloadPromises);
+
+      // Add a small delay between batches to avoid being blocked
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     console.log(`\nDownload summary:`);
