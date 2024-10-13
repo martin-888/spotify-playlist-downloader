@@ -3,7 +3,7 @@ import chokidar from 'chokidar';
 import path from 'path';
 import fs from 'fs/promises';
 
-import {analyzeBitrate, convertMkvToMp3} from './lib';
+import {convertMkvToMp3} from './lib';
 
 dotenv.config();
 
@@ -40,14 +40,9 @@ const convertToMp3WithRetries = async (inputPath: string, retries = 0) => {
   const fileName = path.basename(inputPath, path.extname(inputPath));
   const outputPath = path.join(outputFolder, `${fileName}.mp3`);
 
-  try {
-    const bitrate = await analyzeBitrate(inputPath);
-    const targetBitrate = `${Math.min(320, Math.round(bitrate / 1000))}k`;
-    await convertMkvToMp3(inputPath, outputPath, targetBitrate);
-    console.log(`✅ Conversion completed with ${targetBitrate} bitrate`);
-  } catch (error) {
-    console.error(`❌ Conversion failed:`, error);
-  }
+  return convertMkvToMp3(inputPath, outputPath, "256k")
+    .then(() => console.log(`✅ Conversion completed`))
+    .catch((error) => console.error('❌ Conversion failed:', error));
 };
 
 // Watch for new files in the input folder
